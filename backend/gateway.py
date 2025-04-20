@@ -12,9 +12,14 @@ def get_db_connection():
     )
     return conn
 
+# a sample query for now
 @app.route('/api/data', methods=['GET'])
 def get_data():
-    print("My name is Mo!")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM olympic_medal_tally_history WHERE total > 100 ORDER BY total ASC LIMIT 1;')
+    search_results = cursor.fetchall()
+    return jsonify(search_results)
 
 if __name__ == "__main__":
     app.run(debug=True)
