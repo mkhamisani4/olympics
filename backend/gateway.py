@@ -13,7 +13,7 @@ def get_db_connection():
     return conn
 
 # a sample query for now - same one from our phase 2 doc
-@app.route('/api/data', methods=['GET'])
+@app.route('/api/sampleData', methods=['GET'])
 def get_data():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -21,6 +21,21 @@ def get_data():
     columns = ["country_noc", "country", "goldMedals", "silverMedals", "bronzeMedals", "totalMedals"]
     search_results = cursor.fetchall()
     results = [dict(zip(columns, result)) for result in search_results]
+    cursor.close()
+    conn.close()
+    return jsonify(results)
+
+# a sample query that returns back all of the events an athlete participated in and any information about results or medals they got
+@app.route('/api/<athleteName>', methods=['GET'])
+def allAthleteEvents(athleteName):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT athleteInfo.name, eventDetails.athlete_id, eventResults.event_title, eventDetails.medal, eventResults.edition, eventResults.sport, eventResults.result_description FROM olympic_athlete_event_details AS eventDetails JOIN olympic_athlete_biography AS athleteInfo ON eventDetails.athlete_id = athleteInfo.athlete_id JOIN olympic_event_results AS eventResults ON eventDetails.result_id = eventResults.result_id WHERE athleteInfo.name ILIKE %s', (f'%{athleteName}%',))
+    columns = ["name", "athlete_id", "event_title", "medal", "edition", "sport", "result_description"]
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    cursor.close()
+    conn.close()
     return jsonify(results)
 
 if __name__ == "__main__":
