@@ -1,6 +1,8 @@
 # olympics
 Developed By: Aayush Bharti, Aadithya Bharadwaj, Neel Ray, Mohammed Khamisani
+
 Tech Stack: React Frontend, Python Flask API, PostgreSQL
+
 Dataset In Use: Olympics 126 Year History (https://www.kaggle.com/datasets/muhammadehsan02/126-years-of-historical-olympic-dataset)
 
 How to Use (Initial for Dev):
