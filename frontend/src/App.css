@@ -1,38 +1,164 @@
+@font-face {
+  font-family: 'HelveticaNeue';
+  src: url('./HelveticaNeueBold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
 .App {
   text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+  background-color: white;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
+  padding-top: 100px;
+}
+
+.App-logo {
+  height: 60px;
+}
+
+.App-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  color: black;
+  gap: 20px;
 }
 
 .App-link {
   color: #61dafb;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.title {
+  font-family: 'HelveticaNeue', sans-serif;
+  font-size: 42px;
+  font-weight: bold;
+  color: black;
+  margin: 0;
+  padding: 0;
+  text-transform: none;
+  letter-spacing: -0.5px;
+}
+
+.search-container {
+  margin-top: 50px;
+  width: 100%;
+  max-width: 1000px;
+  padding: 0 20px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.search-bar {
+  flex: 1;
+  height: 50px;
+  padding: 0 25px;
+  border-radius: 25px;
+  border: 2px solid #e0e0e0;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.3s ease;
+  background-color: #f8f8f8;
+}
+
+.search-bar:focus {
+  border-color: #000;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.search-bar::placeholder {
+  color: #999;
+  font-weight: 300;
+}
+
+.results-timing {
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #70757a;
+  text-align: left;
+  padding: 0 20px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.results-timing.visible {
+  opacity: 1;
+}
+
+.controls-row {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 600px;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-select {
+  min-width: 150px;
+  height: 50px;
+  padding: 0 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: white;
+  outline: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.view-toggle {
+  background-color: #f0f0f0;
+  border: 2px solid #e0e0e0;
+  border-radius: 25px;
+  padding: 4px;
+  display: flex;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 160px;
+  height: 50px;
+}
+
+.toggle-option {
+  padding: 6px 16px;
+  font-size: 16px;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  z-index: 1;
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-option.active {
+  color: white;
+}
+
+.toggle-background {
+  position: absolute;
+  width: 50%;
+  height: 85%;
+  background-color: black;
+  border-radius: 16px;
+  transition: transform 0.3s ease;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 4px;
+}
+
+.toggle-background.map {
+  transform: translate(calc(100% - 8px), -50%);
 }
