@@ -1,22 +1,33 @@
 import './App.css';
 import olympicsLogo from './Olympics_logo.png';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import OlympicsTable from './components/OlympicsTable';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMapView, setIsMapView] = useState(false);
-  const [searchTime, setSearchTime] = useState(null);
+  const [queryTime, setQueryTime] = useState(null);
+  const [selectedTable, setSelectedTable] = useState('medals');
+  const [resultCount, setResultCount] = useState(null);
+  const [currentRange, setCurrentRange] = useState({ start: 1, end: 50 });
 
   const handleSearch = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    if (query) {
-      // testing only
-      setSearchTime(Math.random() * 0.5 + 0.1);
-    } else {
-      setSearchTime(null);
-    }
   };
+
+  const handleTableSelect = (e) => {
+    setSelectedTable(e.target.value);
+    setQueryTime(null);
+    setResultCount(null);
+    setCurrentRange({ start: 1, end: 50 });
+  };
+
+  const handleQueryComplete = useCallback((time, total, start, end) => {
+    setQueryTime(time);
+    setResultCount(total);
+    setCurrentRange({ start, end });
+  }, []);
 
   return (
     <div className="App">
@@ -25,9 +36,16 @@ function App() {
         <h1 className="title">Olympics</h1>
       </header>
       <div className="search-container">
-        <select className="table-select">
+        <select 
+          className="table-select" 
+          value={selectedTable} 
+          onChange={handleTableSelect}
+        >
           <option value="athletes">Athletes</option>
+          <option value="athlete_events">Athlete Events</option>
+          <option value="countries">Countries</option>
           <option value="events">Events</option>
+          <option value="games">Games</option>
           <option value="medals">Medals</option>
         </select>
         <input 
@@ -43,11 +61,16 @@ function App() {
           <span className={`toggle-option ${isMapView ? 'active' : ''}`}>Map</span>
         </div>
       </div>
-      {searchTime && (
-        <div className={`results-timing ${searchTime ? 'visible' : ''}`}>
-          About {searchQuery.split(' ').length * 100} results ({searchTime.toFixed(2)} seconds)
+      {queryTime !== null && (
+        <div className={`results-timing visible`}>
+          Showing {currentRange.start.toLocaleString()}-{Math.min(currentRange.end, resultCount).toLocaleString()} of {resultCount?.toLocaleString()} results ({queryTime.toFixed(3)} seconds)
         </div>
       )}
+      {!isMapView && <OlympicsTable 
+        tableType={selectedTable} 
+        searchQuery={searchQuery}
+        onQueryComplete={handleQueryComplete}
+      />}
     </div>
   );
 }

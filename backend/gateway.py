@@ -1,22 +1,57 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import psycopg2
 
 app = Flask(__name__)
+#  allow requests from frontend (needed apparenytl)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True # making it pretty auto
 
 # the stuff you use to connect to the database in ur postgres
 def get_db_connection():
     conn = psycopg2.connect(
-        #dbname="CSE412_GroupProject",
-        #user="aadz4",  # default PostgreSQL user, change if different
-        #password="040504",  # add your password here
-        #host="localhost",
-        #port="5432"  # default PostgreSQL port
-        dbname="", user="", password="", host="",
-        port=""
+        dbname="CSE412_GroupProject",
+        user="aadz4",  # default PostgreSQL user, change if different
+        password="040504",  # add your password here
+        host="localhost",
+        port="5432"  # default PostgreSQL port
+        #dbname="", user="", password="", host="", port=""
     )
     return conn
+
+def get_paginated_response(query, count_query, columns, params=()):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get total count
+    cursor.execute(count_query, params)
+    total_count = cursor.fetchone()[0]
+    
+    # Measure query execution time
+    cursor.execute("EXPLAIN ANALYZE " + query, params)
+    execution_plan = cursor.fetchall()
+    # Get actual time from the last line of EXPLAIN ANALYZE
+    execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    
+    # Get actual data
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return {
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000  # Convert from ms to seconds
+    }
 
 # a sample query for now - same one from our phase 2 doc
 @app.route('/api/sampleData', methods=['GET'])
@@ -113,6 +148,121 @@ def medalsByAthlete():
 @app.route('/api/test', methods=['GET'])
 def test():
     return jsonify({"message": "hello i work"})
+
+#  all athlete biographies
+@app.route('/api/athletes', methods=['GET'])
+def get_athletes():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+    
+    query = 'SELECT * FROM olympic_athlete_biography ORDER BY name LIMIT %s OFFSET %s'
+    count_query = 'SELECT COUNT(*) FROM olympic_athlete_biography'
+    columns = ["athlete_id", "name", "gender", "height", "weight", "birth_date"]
+    
+    return jsonify(get_paginated_response(
+        query=query,
+        count_query=count_query,
+        columns=columns,
+        params=(per_page, offset)
+    ))
+
+#  all athlete event details
+@app.route('/api/athlete_events', methods=['GET'])
+def get_athlete_events():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+    
+    query = 'SELECT * FROM olympic_athlete_event_details ORDER BY athlete LIMIT %s OFFSET %s'
+    count_query = 'SELECT COUNT(*) FROM olympic_athlete_event_details'
+    columns = ["athlete_id", "result_id", "athlete", "age", "medal"]
+    
+    return jsonify(get_paginated_response(
+        query=query,
+        count_query=count_query,
+        columns=columns,
+        params=(per_page, offset)
+    ))
+
+#  all country profiles
+@app.route('/api/countries', methods=['GET'])
+def get_countries():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+    
+    query = 'SELECT * FROM olympic_country_profiles ORDER BY country LIMIT %s OFFSET %s'
+    count_query = 'SELECT COUNT(*) FROM olympic_country_profiles'
+    columns = ["noc", "country", "notes"]
+    
+    return jsonify(get_paginated_response(
+        query=query,
+        count_query=count_query,
+        columns=columns,
+        params=(per_page, offset)
+    ))
+
+#  all event results
+@app.route('/api/events', methods=['GET'])
+def get_events():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+    
+    query = 'SELECT * FROM olympic_event_results ORDER BY edition, sport, event_title LIMIT %s OFFSET %s'
+    count_query = 'SELECT COUNT(*) FROM olympic_event_results'
+    columns = ["result_id", "event_title", "edition", "edition_id", "sport", "sport_url", "result_date", "result_location", "result_participants", "result_format", "result_detail", "result_description"]
+    
+    return jsonify(get_paginated_response(
+        query=query,
+        count_query=count_query,
+        columns=columns,
+        params=(per_page, offset)
+    ))
+
+#  all games summaries
+@app.route('/api/games', methods=['GET'])
+def get_games():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+    
+    query = 'SELECT * FROM olympic_games_summary ORDER BY year DESC LIMIT %s OFFSET %s'
+    count_query = 'SELECT COUNT(*) FROM olympic_games_summary'
+    columns = ["edition_id", "edition", "year", "host_city", "opening_date", "closing_date", "nations", "participants", "participants_m", "participants_f", "events"]
+    
+    return jsonify(get_paginated_response(
+        query=query,
+        count_query=count_query,
+        columns=columns,
+        params=(per_page, offset)
+    ))
+
+#  all medal tallies
+@app.route('/api/medals', methods=['GET'])
+def get_medals():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    offset = (page - 1) * per_page
+    
+    query = '''
+        SELECT medalTally.*, countryProfile.country 
+        FROM olympic_medal_tally_history AS medalTally 
+        JOIN olympic_country_profiles AS countryProfile 
+        ON medalTally.country_noc = countryProfile.noc 
+        ORDER BY edition_id DESC, total DESC 
+        LIMIT %s OFFSET %s
+    '''
+    count_query = 'SELECT COUNT(*) FROM olympic_medal_tally_history'
+    columns = ["edition_id", "country_noc", "rank", "gold", "silver", "bronze", "total", "rank_by_total", "country_name"]
+    
+    return jsonify(get_paginated_response(
+        query=query,
+        count_query=count_query,
+        columns=columns,
+        params=(per_page, offset)
+    ))
 
 if __name__ == "__main__":
     app.run(debug=True)

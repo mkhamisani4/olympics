@@ -13,7 +13,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 100px;
+  padding-top: 50px;
+  padding-bottom: 50px;
 }
 
 .App-logo {
@@ -161,4 +162,13 @@
 
 .toggle-background.map {
   transform: translate(calc(100% - 8px), -50%);
+}
+
+/* Add styles for table container */
+.table-container {
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 20px;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
