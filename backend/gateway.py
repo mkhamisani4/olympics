@@ -16,8 +16,8 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True # making it pretty auto
 # the stuff you use to connect to the database in ur postgres
 def get_db_connection():
     conn = psycopg2.connect(
-        dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432" 
-        #dbname="", user="", password="", host="", port=""
+        #dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432" 
+        dbname="", user="", password="", host="", port=""
     )
     return conn
 

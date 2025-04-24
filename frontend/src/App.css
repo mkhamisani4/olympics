@@ -164,7 +164,6 @@
   transform: translate(calc(100% - 8px), -50%);
 }
 
-/* Add styles for table container */
 .table-container {
   width: 100%;
   max-width: 1200px;
