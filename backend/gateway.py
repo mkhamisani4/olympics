@@ -16,11 +16,7 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True # making it pretty auto
 # the stuff you use to connect to the database in ur postgres
 def get_db_connection():
     conn = psycopg2.connect(
-        dbname="CSE412_GroupProject",
-        user="aadz4",  # default PostgreSQL user, change if different
-        password="040504",  # add your password here
-        host="localhost",
-        port="5432"  # default PostgreSQL port
+        dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432" 
         #dbname="", user="", password="", host="", port=""
     )
     return conn
@@ -33,13 +29,13 @@ def get_paginated_response(query, count_query, columns, params=()):
     cursor.execute(count_query, params)
     total_count = cursor.fetchone()[0]
     
-    # Measure query execution time
+    #  query execution time
     cursor.execute("EXPLAIN ANALYZE " + query, params)
     execution_plan = cursor.fetchall()
-    # Get actual time from the last line of EXPLAIN ANALYZE
+    #time from the last line of EXPLAIN ANALYZE
     execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
     
-    # Get actual data
+    #actual data
     cursor.execute(query, params)
     search_results = cursor.fetchall()
     results = [dict(zip(columns, result)) for result in search_results]
