@@ -16,8 +16,9 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True # making it pretty auto
 # the stuff you use to connect to the database in ur postgres
 def get_db_connection():
     conn = psycopg2.connect(
-        #dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432" 
-        dbname="", user="", password="", host="", port=""
+        #dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432"
+        dbname="Project", user="postgres", password="Jawn", host="localhost", port="5433"
+        # dbname="", user="", password="", host="", port=""
     )
     return conn
 
@@ -134,9 +135,33 @@ def medalsByAthlete():
     conn.close()
     return jsonify(results)
 
-# query for inserting
+# INSERTION
+# athlete biography table
+@app.route('/api/add/athleteBio', methods=['POST'])
+def insert_player(id, name, sex, born, height, weight, country, country_noc, description, special_notes):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Olympic_Athlete_Biography (athlete_id, name, sex, born, height, weight, country, country_noc, description, special_notes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', (id, name, sex, born, height, weight, country, country_noc, description, special_notes))
 
-# query for updating something
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": f"{name} Inserted successfully"})
+
+# athlete event details table
+@app.route('/api/add/athleteEventDetails', methods=['POST'])
+def insert_player(edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Olympic_Athlete_Event_Details (edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', (edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": f"{athlete} Inserted successfully"})
+
+# UPDATE 
+
 
 # query for deleting something
 
