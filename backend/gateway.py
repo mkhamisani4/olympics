@@ -137,7 +137,7 @@ def medalsByAthlete():
 
 # INSERTION
 # athlete biography table
-@app.route('/api/add/athleteBio', methods=['POST'])
+@app.route('/api/add/athleteBio/<id>/<name>/<sex>/<born>/<height>/<weight>/<country>/<country_noc>/<description>/<special_notes>', methods=['POST'])
 def insert_player(id, name, sex, born, height, weight, country, country_noc, description, special_notes):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -149,8 +149,8 @@ def insert_player(id, name, sex, born, height, weight, country, country_noc, des
     return jsonify({"message": f"{name} Inserted successfully"})
 
 # athlete event details table
-@app.route('/api/add/athleteEventDetails', methods=['POST'])
-def insert_player(edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport):
+@app.route('/api/add/athleteEventDetails/<edition>/<editio_id>/<country_noc>/<sport>/<event>/<result_id>/<athlete>/<pos>/<medal>/<isteamsport>', methods=['POST'])
+def insert_player_event(edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('INSERT INTO Olympic_Athlete_Event_Details (edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', (edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport))
@@ -163,7 +163,31 @@ def insert_player(edition, edition_id, country_noc, sport, event, result_id, ath
 # UPDATE 
 
 
-# query for deleting something
+# DELETE
+# athlete biography table
+@app.route('/api/delete/athleteBio/<id>/<name>', methods=['DELETE'])
+def delete_player(id, name):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": f"{name} Deleted successfully"})
+
+# athlete biography table
+@app.route('/api/delete/athleteEventDetails/<edition_id>/<result_id>/<athlete_id>/<pos>', methods=['DELETE'])
+def delete_player_event(edition_id, result_id, athlete_id, pos):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s athlete_id = %s AND pos = %s', (edition_id, result_id, athlete_id, pos))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": f"{edition_id, result_id, athlete_id, pos} Deleted successfully"})
+
 
 # endpoint tester
 @app.route('/api/test', methods=['GET'])
