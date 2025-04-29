@@ -139,6 +139,7 @@ def medalsByAthlete():
 
 # INSERTION
 # athlete biography table
+# sample endpoint for this http://127.0.0.1:5000/api/add/athleteBio/123123423/NotLeBron%20NotJames/Male/4%20April%201949/200/230/Bulgaria/BUL/goat...nuff%20said/GOATED adds THE GOAT - has to be unique though so delete him first if already existing
 @app.route('/api/add/athleteBio/<id>/<name>/<sex>/<born>/<height>/<weight>/<country>/<country_noc>/<description>/<special_notes>', methods=['POST'])
 def insert_player(id, name, sex, born, height, weight, country, country_noc, description, special_notes):
     conn = get_db_connection()
@@ -146,6 +147,7 @@ def insert_player(id, name, sex, born, height, weight, country, country_noc, des
     cursor.execute('INSERT INTO Olympic_Athlete_Biography (athlete_id, name, sex, born, height, weight, country, country_noc, description, special_notes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', (id, name, sex, born, height, weight, country, country_noc, description, special_notes))
 
     player_dict[id] = name
+    #print(player_dict)
     
     conn.commit()
     cursor.close()
@@ -166,6 +168,7 @@ def insert_player_event(edition, edition_id, country_noc, sport, event, result_i
 
 # UPDATE 
 # athlete biography table
+# for the above insertion of NotLeBron, use this endpoint to test: http://127.0.0.1:5000/api/update/athleteBio/123123423/NotLeBron%20NotJames/Male/4%20April%201949/24/230/Bulgaria/BUL/goat...nuff%20said/GOATED
 @app.route('/api/update/athleteBio/<id>/<name>/<sex>/<born>/<height>/<weight>/<country>/<country_noc>/<description>/<special_notes>', methods=['PUT'])
 def update_player(id, name, sex, born, height, weight, country, country_noc, description, special_notes):
     conn = get_db_connection()
@@ -192,12 +195,14 @@ def update_player_event(edition, edition_id, country_noc, event, result_id, athl
 
 # DELETE
 # athlete biography table
+# To delete the above test NotLeBron, use this endpoint: http://127.0.0.1:5000/api/delete/athleteBio/123123423/NotLeBron%20NotJames
 @app.route('/api/delete/athleteBio/<id>/<name>', methods=['DELETE'])
 def delete_player(id, name):
     conn = get_db_connection()
     cursor = conn.cursor()
     
     # check if the athlete was added by the user, which would allow them to delete
+    #print(player_dict)
     if id in player_dict and player_dict[id] == name:
         del player_dict[id]
         cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))

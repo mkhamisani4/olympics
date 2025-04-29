@@ -55,6 +55,19 @@
   align-items: center;
 }
 
+.mode-select {
+  min-width: 150px;
+  height: 50px;
+  padding: 0 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: white;
+  outline: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
 .search-bar {
   flex: 1;
   height: 50px;
