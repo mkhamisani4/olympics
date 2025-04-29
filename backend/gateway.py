@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import psycopg2
 
+player_dict = {}
+
 app = Flask(__name__)
 #  allow requests from frontend (needed apparenytl)
 CORS(app, resources={
@@ -143,13 +145,15 @@ def insert_player(id, name, sex, born, height, weight, country, country_noc, des
     cursor = conn.cursor()
     cursor.execute('INSERT INTO Olympic_Athlete_Biography (athlete_id, name, sex, born, height, weight, country, country_noc, description, special_notes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', (id, name, sex, born, height, weight, country, country_noc, description, special_notes))
 
+    player_dict[id] = name
+    
     conn.commit()
     cursor.close()
     conn.close()
     return jsonify({"message": f"{name} Inserted successfully"})
 
 # athlete event details table
-@app.route('/api/add/athleteEventDetails/<edition>/<editio_id>/<country_noc>/<sport>/<event>/<result_id>/<athlete>/<pos>/<medal>/<isteamsport>', methods=['POST'])
+@app.route('/api/add/athleteEventDetails/<edition>/<edition_id>/<country_noc>/<sport>/<event>/<result_id>/<athlete>/<athlete_id>/<pos>/<medal>/<isteamsport>', methods=['POST'])
 def insert_player_event(edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isteamsport):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -161,6 +165,29 @@ def insert_player_event(edition, edition_id, country_noc, sport, event, result_i
     return jsonify({"message": f"{athlete} Inserted successfully"})
 
 # UPDATE 
+# athlete biography table
+@app.route('/api/update/athleteBio/<id>/<name>/<sex>/<born>/<height>/<weight>/<country>/<country_noc>/<description>/<special_notes>', methods=['PUT'])
+def update_player(id, name, sex, born, height, weight, country, country_noc, description, special_notes):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE Olympic_Athlete_Biography SET name = %s, sex = %s, born = %s, height = %s, weight = %s, country = %s, country_noc = %s, description = %s, special_notes = %s WHERE athlete_id = %s', (name, sex, born, height, weight, country, country_noc, description, special_notes, id))
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": f"{name} Updated successfully"})
+
+# athlete event details table
+@app.route('/api/update/athleteEventDetails/<edition>/<edition_id>/<country_noc>/<event>/<result_id>/<athlete>/<athlete_id>/<pos>/<medal>', methods=['PUT'])
+def update_player_event(edition, edition_id, country_noc, event, result_id, athlete, athlete_id, pos, medal):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE Olympic_Athlete_Event_Details SET edition = %s, country_noc = %s, event = %s, athlete = %s, medal = %s WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', (edition, country_noc, event, athlete, medal, edition_id, result_id, athlete_id, pos))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": f"{athlete} Updated successfully"})
 
 
 # DELETE
@@ -169,7 +196,11 @@ def insert_player_event(edition, edition_id, country_noc, sport, event, result_i
 def delete_player(id, name):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
+    
+    # check if the athlete was added by the user, which would allow them to delete
+    if id in player_dict and player_dict[id] == name:
+        del player_dict[id]
+        cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
 
     conn.commit()
     cursor.close()
@@ -181,12 +212,14 @@ def delete_player(id, name):
 def delete_player_event(edition_id, result_id, athlete_id, pos):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s athlete_id = %s AND pos = %s', (edition_id, result_id, athlete_id, pos))
+    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', (edition_id, result_id, athlete_id, pos))
 
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({"message": f"{edition_id, result_id, athlete_id, pos} Deleted successfully"})
+    return jsonify({"message": f"Record with Edition ID: {edition_id}, Result ID: {result_id}, Athlete ID: {athlete_id}, Position: {pos} Deleted successfully"})
+
+
 
 
 # endpoint tester
