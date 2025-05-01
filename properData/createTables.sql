@@ -1,6 +1,3 @@
--- creating the database
-CREATE DATABASE OlympicDB;
-
 -- creating all the tables in the database
 CREATE TABLE Olympic_Country_Profiles (
 	noc VARCHAR(3) NOT NULL PRIMARY KEY,
@@ -82,23 +79,3 @@ CREATE TABLE Olympic_Medal_Tally_History (
 	FOREIGN KEY (edition_id) REFERENCES Olympic_Games_Summary(edition_id),
 	FOREIGN KEY (country_noc) REFERENCES Olympic_Country_Profiles(noc)
 );
-
-
--- inserting data into the tables
-COPY Olympic_Country_Profiles(noc, country) 
-FROM 'Olympic_Country_Profiles.csv' DELIMITER ',' CSV HEADER;
-
-COPY Olympic_Games_Summary(edition, edition_id, edition_url, year, city, country_flag_url, country_noc, start_date, end_date, competition_date, isHeld) 
-FROM 'Olympic_Games_Summary.csv' DELIMITER ',' CSV HEADER;
-
-COPY Olympic_Athlete_Biography(athlete_id, name, sex, born, height, weight, country, country_noc, description, special_notes)
-FROM 'Olympic_Athlete_Biography.csv' DELIMITER ',' CSV HEADER;
-
-COPY Olympic_Event_Results(result_id, event_title, edition, edition_id, sport, sport_url, result_date, result_location, result_participants, result_format, result_detail, result_description)
-FROM 'Olympic_Event_Results.csv' DELIMITER ',' CSV HEADER;
-
-COPY Olympic_Athlete_Event_Details(edition, edition_id, country_noc, sport, event, result_id, athlete, athlete_id, pos, medal, isTeamSport)
-FROM 'Olympic_Athlete_Event_Details.csv' DELIMITER ',' CSV HEADER;
-
-COPY Olympic_Medal_Tally_History(edition, edition_id, year, country, country_noc, gold, silver, bronze, total)
-FROM 'Olympic_Medal_Tally_History.csv' DELIMITER ',' CSV HEADER;
