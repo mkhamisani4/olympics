@@ -2,6 +2,7 @@ import './App.css';
 import olympicsLogo from './Olympics_logo.png';
 import { useState, useCallback } from 'react';
 import OlympicsTable from './components/OlympicsTable';
+import MedalMap from './components/MedalMap';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,13 +82,24 @@ function App() {
           Showing {currentRange.start.toLocaleString()}-{Math.min(currentRange.end, resultCount).toLocaleString()} of {resultCount?.toLocaleString()} results ({queryTime.toFixed(3)} seconds)
         </div>
       )}
-      {!isMapView && <OlympicsTable 
-        tableType={selectedTable} 
-        searchQuery={searchQuery}
-        onQueryComplete={handleQueryComplete}
-        isInserting={isInserting}
-        onCancelInsert={handleCancelInsert}
-      />}
+      {!isMapView ? 
+        <OlympicsTable 
+          tableType={selectedTable} 
+          searchQuery={searchQuery}
+          onQueryComplete={handleQueryComplete}
+          isInserting={isInserting}
+          onCancelInsert={handleCancelInsert}
+        /> : 
+        selectedTable === 'medals' ? 
+          <MedalMap 
+            searchQuery={searchQuery}
+            onQueryComplete={handleQueryComplete}
+          /> :
+          <div className="map-not-available">
+            <p>Map view is only available for Medal data.</p>
+            <button onClick={() => setSelectedTable('medals')}>Switch to Medal Data</button>
+          </div>
+      }
     </div>
   );
 }
