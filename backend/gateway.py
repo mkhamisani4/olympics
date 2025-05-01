@@ -18,8 +18,8 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True # making it pretty auto
 # the stuff you use to connect to the database in ur postgres
 def get_db_connection():
     conn = psycopg2.connect(
-        #dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432"
-        dbname="Project", user="postgres", password="Jawn", host="localhost", port="5433"
+        dbname="CSE412_GroupProject", user="aadz4", password="040504", host="localhost", port="5432"
+        #dbname="Project", user="postgres", password="Jawn", host="localhost", port="5433"
         # dbname="", user="", password="", host="", port=""
     )
     return conn
@@ -195,34 +195,39 @@ def update_player_event(edition, edition_id, country_noc, event, result_id, athl
 
 # DELETE
 # athlete biography table
-# To delete the above test NotLeBron, use this endpoint: http://127.0.0.1:5000/api/delete/athleteBio/123123423/NotLeBron%20NotJames
 @app.route('/api/delete/athleteBio/<id>/<name>', methods=['DELETE'])
 def delete_player(id, name):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # check if the athlete was added by the user, which would allow them to delete
-    #print(player_dict)
-    if id in player_dict and player_dict[id] == name:
-        del player_dict[id]
-        cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
-
+    cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
+    deleted = cursor.rowcount > 0
+    
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({"message": f"{name} Deleted successfully"})
+    
+    if deleted:
+        return jsonify({"message": f"{name} deleted successfully", "success": True})
+    return jsonify({"error": "Record not found", "success": False}), 404
 
-# athlete biography table
+# athlete event details table
 @app.route('/api/delete/athleteEventDetails/<edition_id>/<result_id>/<athlete_id>/<pos>', methods=['DELETE'])
 def delete_player_event(edition_id, result_id, athlete_id, pos):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', (edition_id, result_id, athlete_id, pos))
-
+    
+    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', 
+                  (edition_id, result_id, athlete_id, pos))
+    deleted = cursor.rowcount > 0
+    
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({"message": f"Record with Edition ID: {edition_id}, Result ID: {result_id}, Athlete ID: {athlete_id}, Position: {pos} Deleted successfully"})
+    
+    if deleted:
+        return jsonify({"message": "Record deleted successfully", "success": True})
+    return jsonify({"error": "Record not found", "success": False}), 404
 
 
 
@@ -241,7 +246,7 @@ def get_athletes():
     
     query = 'SELECT * FROM olympic_athlete_biography ORDER BY name LIMIT %s OFFSET %s'
     count_query = 'SELECT COUNT(*) FROM olympic_athlete_biography'
-    columns = ["athlete_id", "name", "gender", "height", "weight", "birth_date"]
+    columns = ["athlete_id", "name", "sex", "born", "height", "weight", "country", "country_noc", "description", "special_notes"]
     
     return jsonify(get_paginated_response(
         query=query,
@@ -259,7 +264,7 @@ def get_athlete_events():
     
     query = 'SELECT * FROM olympic_athlete_event_details ORDER BY athlete LIMIT %s OFFSET %s'
     count_query = 'SELECT COUNT(*) FROM olympic_athlete_event_details'
-    columns = ["athlete_id", "result_id", "athlete", "age", "medal"]
+    columns = ["edition", "edition_id", "country_noc", "sport", "event", "result_id", "athlete", "athlete_id", "pos", "medal", "isteamsport"]
     
     return jsonify(get_paginated_response(
         query=query,
@@ -311,9 +316,18 @@ def get_games():
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
     
-    query = 'SELECT * FROM olympic_games_summary ORDER BY year DESC LIMIT %s OFFSET %s'
+    query = '''
+        SELECT edition, edition_id, edition_url, year, city, 
+               country_flag_url, country_noc, start_date, end_date, 
+               competition_date, isHeld
+        FROM olympic_games_summary 
+        ORDER BY year DESC 
+        LIMIT %s OFFSET %s
+    '''
     count_query = 'SELECT COUNT(*) FROM olympic_games_summary'
-    columns = ["edition_id", "edition", "year", "host_city", "opening_date", "closing_date", "nations", "participants", "participants_m", "participants_f", "events"]
+    columns = ["edition", "edition_id", "edition_url", "year", "city", 
+               "country_flag_url", "country_noc", "start_date", "end_date", 
+               "competition_date", "isHeld"]
     
     return jsonify(get_paginated_response(
         query=query,
@@ -330,7 +344,9 @@ def get_medals():
     offset = (page - 1) * per_page
     
     query = '''
-        SELECT medalTally.*, countryProfile.country 
+        SELECT medalTally.edition, medalTally.edition_id, medalTally.year, medalTally.country, medalTally.country_noc, 
+        ROW_NUMBER() OVER(PARTITION BY medalTally.edition_id ORDER BY medalTally.total DESC) as rank,
+        medalTally.gold, medalTally.silver, medalTally.bronze, medalTally.total
         FROM olympic_medal_tally_history AS medalTally 
         JOIN olympic_country_profiles AS countryProfile 
         ON medalTally.country_noc = countryProfile.noc 
@@ -338,7 +354,7 @@ def get_medals():
         LIMIT %s OFFSET %s
     '''
     count_query = 'SELECT COUNT(*) FROM olympic_medal_tally_history'
-    columns = ["edition_id", "country_noc", "rank", "gold", "silver", "bronze", "total", "rank_by_total", "country_name"]
+    columns = ["edition", "edition_id", "year", "country", "country_noc", "rank", "gold", "silver", "bronze", "total"]
     
     return jsonify(get_paginated_response(
         query=query,

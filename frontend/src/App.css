@@ -140,13 +140,13 @@
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 160px;
-  height: 50px;
+  height: 40px;
 }
 
 .toggle-option {
   padding: 6px 16px;
-  font-size: 16px;
-  border-radius: 16px;
+  font-size: 14px;
+  border-radius: 20px;
   transition: all 0.3s ease;
   z-index: 1;
   flex: 1;
@@ -166,7 +166,7 @@
   width: 50%;
   height: 85%;
   background-color: black;
-  border-radius: 16px;
+  border-radius: 20px;
   transition: transform 0.3s ease;
   top: 50%;
   transform: translateY(-50%);
@@ -183,4 +183,98 @@
   margin-top: 20px;
   padding: 0 20px;
   box-sizing: border-box;
+}
+
+.action-buttons-container {
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 15px;
+  display: flex;
+  gap: 15px;
+  justify-content: flex-start;
+  padding: 0 20px;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.insert-button {
+  background-color: #000000;
+  color: white;
+}
+
+.insert-button:hover {
+  background-color: #333333;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.delete-button {
+  background-color: #e53935;
+  color: white;
+}
+
+.delete-button:hover {
+  background-color: #c62828;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.update-icon {
+  visibility: hidden;
+  cursor: pointer;
+  color: #2196f3;
+  margin-left: 10px;
+}
+
+tr:hover .update-icon {
+  visibility: visible;
+}
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  min-width: 300px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.popup-content h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 20px;
+}
+
+.popup-content input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
 }
