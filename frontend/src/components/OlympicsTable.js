@@ -340,10 +340,13 @@ const OlympicsTable = ({
           return;
       }
 
-      const encodedParams = params.map(param => encodeURIComponent(param || '')).join('/');
-      const response = await axios.put(`http://localhost:5000${endpoint}/${encodedParams}`);
+      const response = await axios.put(`http://localhost:5000${endpoint}`, editRowData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       
-      if (response.status === 200) {
+      if (response.data.success) {
         setEditingRow(null);
         setEditRowData({});
         setPage(0);

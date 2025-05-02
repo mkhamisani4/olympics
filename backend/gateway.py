@@ -187,8 +187,19 @@ def insert_player_event(edition, edition_id, country_noc, sport, event, result_i
 # UPDATE 
 # athlete biography table
 # for the above insertion of NotLeBron, use this endpoint to test: http://127.0.0.1:5000/api/update/athleteBio/123123423/NotLeBron%20NotJames/Male/4%20April%201949/24/230/Bulgaria/BUL/goat...nuff%20said/GOATED
-@app.route('/api/update/athleteBio/<id>/<name>/<sex>/<born>/<height>/<weight>/<country>/<country_noc>/<description>/<special_notes>', methods=['PUT'])
-def update_player(id, name, sex, born, height, weight, country, country_noc, description, special_notes):
+@app.route('/api/update/athleteBio', methods=['PUT'])
+def update_athlete():
+    data = request.get_json()
+    id = data.get('athlete_id')
+    name = data.get('name')
+    sex = data.get('sex')
+    born = data.get('born')
+    height = data.get('height')
+    weight = data.get('weight')
+    country = data.get('country')
+    country_noc = data.get('country_noc')
+    description = data.get('description')
+    special_notes = data.get('special_notes')
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('UPDATE Olympic_Athlete_Biography SET name = %s, sex = %s, born = %s, height = %s, weight = %s, country = %s, country_noc = %s, description = %s, special_notes = %s WHERE athlete_id = %s', (name, sex, born, height, weight, country, country_noc, description, special_notes, id))
@@ -196,11 +207,21 @@ def update_player(id, name, sex, born, height, weight, country, country_noc, des
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({"message": f"{name} Updated successfully"})
+    return jsonify(success=True, message=f"{name} Updated successfully")
 
 # athlete event details table
-@app.route('/api/update/athleteEventDetails/<edition>/<edition_id>/<country_noc>/<event>/<result_id>/<athlete>/<athlete_id>/<pos>/<medal>', methods=['PUT'])
-def update_player_event(edition, edition_id, country_noc, event, result_id, athlete, athlete_id, pos, medal):
+@app.route('/api/update/athleteEventDetails', methods=['PUT'])
+def update_player_event():
+    data = request.get_json()
+    edition = data.get('edition')
+    edition_id = data.get('edition_id')
+    country_noc = data.get('country_noc')
+    event = data.get('event')
+    result_id = data.get('result_id')
+    athlete = data.get('athlete')
+    athlete_id = data.get('athlete_id')
+    pos = data.get('pos')
+    medal = data.get('medal')
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('UPDATE Olympic_Athlete_Event_Details SET edition = %s, country_noc = %s, event = %s, athlete = %s, medal = %s WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', (edition, country_noc, event, athlete, medal, edition_id, result_id, athlete_id, pos))
@@ -208,7 +229,7 @@ def update_player_event(edition, edition_id, country_noc, event, result_id, athl
     conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({"message": f"{athlete} Updated successfully"})
+    return jsonify(success=True, message=f"{result_id} Updated successfully")
 
 
 # DELETE
