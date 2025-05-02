@@ -206,24 +206,36 @@ const OlympicsTable = ({
 
     try {
       let endpoint = '';
-      let params = [];
+      let deleteData = {};
       
       switch (tableType) {
         case 'athletes':
           endpoint = '/api/delete/athleteBio';
-          params = [row.athlete_id, row.name];
+          deleteData = {
+            athlete_id: row.athlete_id,
+            name: row.name
+          };
           break;
         case 'athlete_events':
           endpoint = '/api/delete/athleteEventDetails';
-          params = [row.edition_id, row.result_id, row.athlete_id, row.pos];
+          deleteData = {
+            edition_id: row.edition_id,
+            result_id: row.result_id,
+            athlete_id: row.athlete_id,
+            pos: row.pos
+          };
           break;
         default:
           setError('Delete not implemented for this table type');
           return;
       }
 
-      const encodedParams = params.map(param => encodeURIComponent(param || '')).join('/');
-      const response = await axios.delete(`http://localhost:5000${endpoint}/${encodedParams}`);
+      const response = await axios.delete(`http://localhost:5000${endpoint}`, {
+        data: deleteData,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (response.data.success) {
         setPage(0);
