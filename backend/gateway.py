@@ -234,7 +234,7 @@ def update_player_event():
 
 # DELETE
 # athlete biography table
-@app.route('/api/delete/athleteBio/<id>/<name>', methods=['DELETE'])
+@app.route('/api/delete/athleteBio/<id>/<n>', methods=['DELETE'])
 def delete_player(id, name):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -260,8 +260,54 @@ def delete_player_event(edition_id, result_id, athlete_id, pos):
     conn.close()
     return jsonify({"message": f"Record with Edition ID: {edition_id}, Result ID: {result_id}, Athlete ID: {athlete_id}, Position: {pos} Deleted successfully"})
 
+# DELETE endpoints accepting JSON data
+@app.route('/api/delete/athleteBio', methods=['DELETE'])
+def delete_athlete():
+    data = request.get_json()
+    athlete_id = data.get('athlete_id')
+    name = data.get('name')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if athlete_id in player_dict and player_dict[athlete_id] == name:
+        del player_dict[athlete_id]
+    
+    cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (athlete_id, name))
+    affected_rows = cursor.rowcount
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    if affected_rows > 0:
+        return jsonify(success=True, message=f"{name} deleted successfully")
+    else:
+        return jsonify(success=False, error=f"Could not find athlete with ID {athlete_id} and name {name}")
 
-
+@app.route('/api/delete/athleteEventDetails', methods=['DELETE'])
+def delete_athlete_event():
+    data = request.get_json()
+    edition_id = data.get('edition_id')
+    result_id = data.get('result_id')
+    athlete_id = data.get('athlete_id')
+    pos = data.get('pos')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', 
+                  (edition_id, result_id, athlete_id, pos))
+    affected_rows = cursor.rowcount
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    if affected_rows > 0:
+        return jsonify(success=True, message=f"Record deleted successfully")
+    else:
+        return jsonify(success=False, error=f"Could not find record with the specified criteria")
 
 # endpoint tester
 @app.route('/api/test', methods=['GET'])
