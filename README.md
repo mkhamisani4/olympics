@@ -5,15 +5,20 @@ Tech Stack: React Frontend, Python Flask API, PostgreSQL
 
 Dataset In Use: Olympics 126 Year History (https://www.kaggle.com/datasets/muhammadehsan02/126-years-of-historical-olympic-dataset)
 
-How to Use (Initial for Dev):
-1. Start your PostgreSQL and make sure all CREATE Table Scripts have been executed and Data is Populated.
-2. Find out your port and host information and put into the python script in the .connect fields. Additionally, put the name of the database, your username, and password for Postgres.
-- Tips for this part: 
-    - Username: Can be found by running SELECT current_user;
-    - Password: It is just the password for the above username, but if you forgot run 
-        - ALTER theUsernameFromAbove WITH PASSWORD 'bored';
-    - The name of the database is just whatever you named it when you created it to populate the data into.
-    - If you followed the initial Postgres documentation from the beginning of the semester, your host might be '/tmp' and your port might be '8888' but if not, you could try host as 'localhost' and port as '5432'. If neither work, check PgAdmin for more info.
-3. Inside the backend folder, running python3 gateway.py will power up the API
-4. http://127.0.0.1:5000/api/sampleData is the localhost endpoint to return the results of the sample query in JSON. Use the other endpoints to try out the other sample queries.
-5. Frontend... Soon
+To Set Up the Database:
+- Make sure the “properData” folder is downloaded from the Github repository.
+- Open pgAdmin and run the “createDB.sql” file which is located inside the “properData” folder. You should see the new database created in your pgAdmin.
+- Open and start the Database and run the “createTables.sql” file which is also located inside the “properData” folder. You should see the tables created within the new database in pgAdmin.
+- For each table (in the order they were inserted in the createTables.sql file), right click on it in the schema and press the “Import/Export Data” button.
+- Select the csv file for the table, use the “csv” option for “Format”. Then, click on the “Options” tab and turn on the “Header” option and make sure the Delimiter is “,”.
+- Check that the tables are populated with sample test queries like “SELECT * FROM Olympic_Country_Profiles” and you should see a list of countries with their short form codes.
+
+After the Database is Set Up, Start the Python Flask API:
+- In the “backend” folder, locate the file called “gateway.py”.
+- You will need to ensure you have Python and Pip installed on your machine, and then run the command “pip install flask flask-cors psycopg2-binary”
+- Finally, run the python file with the command “python gateway.py” or “python3 gateway.py”. You should see the terminal say that the API is running on port 5000 or something similar.
+
+After the API and Database are Up, Run the Frontend:
+- Navigate to the “frontend” folder and run “npm install” to get all dependencies. You should see a progress bar showing the dependencies being installed.
+- Run the command “npm start” and React will open the webpage for you automatically to start interacting with the Olympics database.
+
