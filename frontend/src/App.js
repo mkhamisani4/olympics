@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import OlympicsTable from './components/OlympicsTable';
 import MedalMap from './components/MedalMap';
 
+const INSERTABLE_TABLES = ['athletes', 'countries'];
+
 function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMapView, setIsMapView] = useState(false);
@@ -40,6 +42,8 @@ function App() {
     setCurrentRange({ start, end });
   }, []);
 
+  const canInsert = INSERTABLE_TABLES.includes(selectedTable);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -73,7 +77,12 @@ function App() {
         </div>
       </div>
       <div className="action-buttons-container">
-        <button className="action-button insert-button" onClick={handleInsert}>
+        <button 
+          className={`action-button insert-button ${!canInsert ? 'disabled' : ''}`} 
+          onClick={handleInsert}
+          disabled={!canInsert}
+          title={canInsert ? "Add a new record" : "Insertion not supported for this table"}
+        >
           Insert
         </button>
       </div>

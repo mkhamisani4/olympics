@@ -309,3 +309,8 @@ tr:hover .update-icon {
 .map-not-available button:hover {
   background-color: #115293;
 }
+
+.action-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

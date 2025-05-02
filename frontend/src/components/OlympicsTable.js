@@ -31,7 +31,7 @@ const tableConfigs = {
     title: 'Athlete Events',
     endpoint: '/api/athlete_events',
     supportsDelete: true,
-    supportsInsert: true,
+    supportsInsert: false,
     columns: [
       { id: 'edition', label: 'Edition', align: 'left' },
       { id: 'edition_id', label: 'Edition ID', align: 'right' },
@@ -53,15 +53,14 @@ const tableConfigs = {
     supportsInsert: true,
     columns: [
       { id: 'noc', label: 'NOC', align: 'left' },
-      { id: 'country', label: 'Country', align: 'left' },
-      { id: 'notes', label: 'Notes', align: 'left' }
+      { id: 'country', label: 'Country', align: 'left' }
     ]
   },
   events: {
     title: 'Olympic Events',
     endpoint: '/api/events',
     supportsDelete: false,
-    supportsInsert: true,
+    supportsInsert: false,
     columns: [
       { id: 'result_id', label: 'Result ID', align: 'right' },
       { id: 'event_title', label: 'Event', align: 'left' },
@@ -81,7 +80,7 @@ const tableConfigs = {
     title: 'Olympic Games',
     endpoint: '/api/games',
     supportsDelete: false,
-    supportsInsert: true,
+    supportsInsert: false,
     columns: [
       { id: 'edition', label: 'Edition', align: 'left' },
       { id: 'edition_id', label: 'Edition ID', align: 'right' },
@@ -98,7 +97,7 @@ const tableConfigs = {
     title: 'Olympic Medal Tally',
     endpoint: '/api/medals',
     supportsDelete: false,
-    supportsInsert: true,
+    supportsInsert: false,
     columns: [
       { id: 'edition', label: 'Games', align: 'left' },
       { id: 'edition_id', label: 'Edition ID', align: 'right' },
@@ -139,11 +138,11 @@ const OlympicsTable = ({
       const response = await axios.get(`http://localhost:5000${config.endpoint}`, {
         params: {
           page: page + 1,
-          per_page: rowsPerPage
+          per_page: rowsPerPage,
+          search: searchQuery
         }
       });
 
-      // Force a clean state update
       setData([...response.data.data]);
       setTotalCount(response.data.total);
       setError(null);
@@ -166,9 +165,8 @@ const OlympicsTable = ({
     } finally {
       setLoading(false);
     }
-  }, [tableType, page, rowsPerPage, onQueryComplete]);
+  }, [tableType, page, rowsPerPage, onQueryComplete, searchQuery]);
 
-  // Reset new row data when table type changes
   useEffect(() => {
     const config = tableConfigs[tableType];
     const emptyRow = {};
@@ -178,17 +176,14 @@ const OlympicsTable = ({
     setNewRowData(emptyRow);
   }, [tableType]);
 
-  // Reset page when table type changes
   useEffect(() => {
     setPage(0);
     setSortConfig({ key: null, direction: null });
-    fetchData();
-  }, [tableType, fetchData]);
+  }, [tableType, searchQuery]);
 
-  // Fetch data when page changes
   useEffect(() => {
     fetchData();
-  }, [page, fetchData]);
+  }, [fetchData, page, tableType, searchQuery]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -231,7 +226,6 @@ const OlympicsTable = ({
       const response = await axios.delete(`http://localhost:5000${endpoint}/${encodedParams}`);
       
       if (response.data.success) {
-        // Reset to first page and fetch fresh data
         setPage(0);
         await fetchData();
       } else {
@@ -258,7 +252,6 @@ const OlympicsTable = ({
     }
 
     try {
-      // Remove empty fields and format data
       const insertData = {};
       Object.keys(newRowData).forEach(key => {
         if (newRowData[key] !== '') {
@@ -282,7 +275,6 @@ const OlympicsTable = ({
       );
       
       if (response.data.success) {
-        // Reset to first page and fetch fresh data
         setPage(0);
         await fetchData();
         if (onCancelInsert) onCancelInsert();
@@ -313,7 +305,6 @@ const OlympicsTable = ({
       let endpoint = '';
       let params = [];
       
-      // Construct the endpoint and parameters based on table type
       switch (tableType) {
         case 'athletes':
           endpoint = '/api/update/athleteBio';
@@ -349,14 +340,12 @@ const OlympicsTable = ({
           return;
       }
 
-      // Encode parameters for URL
       const encodedParams = params.map(param => encodeURIComponent(param || '')).join('/');
       const response = await axios.put(`http://localhost:5000${endpoint}/${encodedParams}`);
       
       if (response.status === 200) {
         setEditingRow(null);
         setEditRowData({});
-        // Reset to first page and fetch fresh data
         setPage(0);
         await fetchData();
       }
@@ -366,7 +355,6 @@ const OlympicsTable = ({
     }
   };
 
-  // Sorting handler for column headers
   const requestSort = (key) => {
     let direction = 'asc';
     
@@ -381,7 +369,6 @@ const OlympicsTable = ({
     setSortConfig({ key, direction });
   };
 
-  // Reset sorting function
   const resetSort = () => {
     setSortConfig({ key: null, direction: null });
   };
@@ -400,7 +387,7 @@ const OlympicsTable = ({
         <Alert severity="error" sx={{ width: '100%' }}>
           {error}
           <Typography variant="body2" sx={{ mt: 1 }}>
-            Please ensure the backend server is running on port 5000 and try refreshing the page.
+            Please check yo backend
           </Typography>
         </Alert>
       </Box>
@@ -417,24 +404,20 @@ const OlympicsTable = ({
       )
     : data;
 
-  // Sort the data if a sort configuration exists
   if (sortConfig.key && sortConfig.direction) {
     filteredData = [...filteredData].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
       
-      // Handle null/undefined values for proper sorting
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
       
-      // For numeric values, use numeric comparison
       if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
         return sortConfig.direction === 'asc' 
           ? parseFloat(aValue) - parseFloat(bValue) 
           : parseFloat(bValue) - parseFloat(aValue);
       }
       
-      // For string values, use string comparison
       return sortConfig.direction === 'asc'
         ? String(aValue).localeCompare(String(bValue))
         : String(bValue).localeCompare(String(aValue));
@@ -505,7 +488,7 @@ const OlympicsTable = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {isInserting && (
+              {isInserting && tableConfigs[tableType].supportsInsert && (
                 <TableRow>
                   {config.columns.map(column => (
                     <TableCell key={column.id} align={column.align}>
@@ -537,86 +520,99 @@ const OlympicsTable = ({
                   </TableCell>
                 </TableRow>
               )}
-              {filteredData.map((row, index) => (
-                <TableRow
-                  key={index}
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                >
-                  {editingRow === row ? (
-                    <>
-                      {config.columns.map(column => (
-                        <TableCell key={column.id} align={column.align}>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={editRowData[column.id] || ''}
-                            onChange={(e) => handleEditRowChange(column.id, e.target.value)}
-                            placeholder={column.label}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                      ))}
-                      <TableCell align="center">
-                        <IconButton 
-                          color="success" 
-                          onClick={handleSaveEdit}
-                          size="small"
-                        >
-                          <CheckIcon />
-                        </IconButton>
-                        <IconButton 
-                          color="error" 
-                          onClick={handleCancelEdit}
-                          size="small"
-                        >
-                          <CancelIcon />
-                        </IconButton>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <>
-                      {config.columns.map(column => (
-                        <TableCell key={column.id} align={column.align}>
-                          {row[column.id] === null || row[column.id] === undefined || row[column.id] === '' ? 
-                            "--" : 
-                            column.id === 'country' ? `${row.country} (${row.country_noc})` : row[column.id]
-                          }
-                        </TableCell>
-                      ))}
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+              {filteredData.length > 0 ? (
+                filteredData.map((row, index) => (
+                  <TableRow
+                    key={index}
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
+                    {editingRow === row ? (
+                      <>
+                        {config.columns.map(column => (
+                          <TableCell key={column.id} align={column.align}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={editRowData[column.id] || ''}
+                              onChange={(e) => handleEditRowChange(column.id, e.target.value)}
+                              placeholder={column.label}
+                              variant="outlined"
+                            />
+                          </TableCell>
+                        ))}
+                        <TableCell align="center">
                           <IconButton 
-                            className="update-icon" 
-                            size="small" 
-                            onClick={() => handleUpdateRow(row)}
-                            sx={{ 
-                              visibility: 'hidden', 
-                              '&:hover': { color: '#1565c0' },
-                              '.MuiTableRow-root:hover &': { visibility: 'visible' }
-                            }}
+                            color="success" 
+                            onClick={handleSaveEdit}
+                            size="small"
                           >
-                            <EditIcon fontSize="small" />
+                            <CheckIcon />
                           </IconButton>
-                          {tableConfigs[tableType].supportsDelete && (
+                          <IconButton 
+                            color="error" 
+                            onClick={handleCancelEdit}
+                            size="small"
+                          >
+                            <CancelIcon />
+                          </IconButton>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        {config.columns.map(column => (
+                          <TableCell key={column.id} align={column.align}>
+                            {row[column.id] === null || row[column.id] === undefined || row[column.id] === '' ? 
+                              "--" : 
+                              column.id === 'country' ? `${row.country} (${row.country_noc})` : row[column.id]
+                            }
+                          </TableCell>
+                        ))}
+                        <TableCell align="center">
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                             <IconButton 
-                              className="delete-icon" 
+                              className="update-icon" 
                               size="small" 
-                              onClick={() => handleDeleteRow(row)}
+                              onClick={() => handleUpdateRow(row)}
                               sx={{ 
                                 visibility: 'hidden', 
-                                '&:hover': { color: '#e53935' },
+                                '&:hover': { color: '#1565c0' },
                                 '.MuiTableRow-root:hover &': { visibility: 'visible' }
                               }}
                             >
-                              <DeleteIcon fontSize="small" />
+                              <EditIcon fontSize="small" />
                             </IconButton>
-                          )}
-                        </Box>
-                      </TableCell>
-                    </>
-                  )}
+                            {tableConfigs[tableType].supportsDelete && (
+                              <IconButton 
+                                className="delete-icon" 
+                                size="small" 
+                                onClick={() => handleDeleteRow(row)}
+                                sx={{ 
+                                  visibility: 'hidden', 
+                                  '&:hover': { color: '#e53935' },
+                                  '.MuiTableRow-root:hover &': { visibility: 'visible' }
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                          </Box>
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={config.columns.length + 1} align="center" sx={{ py: 4 }}>
+                    <Typography variant="h6" color="textSecondary">
+                      No results found
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                      {searchQuery ? `No matches for "${searchQuery}"` : "No data available"}
+                    </Typography>
+                  </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </TableContainer>

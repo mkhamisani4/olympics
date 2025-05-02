@@ -6,9 +6,8 @@ import axios from 'axios';
 import ReactTooltip from 'react-tooltip';
 import geoData from '../countriesGeoJsonData.json';
 
-// Map of NOC codes to ISO codes for matching country data
 const nocToIsoMap = {
-  "ARG": "AFG", "ALB": "ALB", "ALG": "DZA", "AND": "AND", "ANG": "AGO",
+  "AFG": "AFG", "ALB": "ALB", "ALG": "DZA", "AND": "AND", "ANG": "AGO",
   "ANT": "ATG", "ARG": "ARG", "ARM": "ARM", "ARU": "ABW", "ASA": "ASM",
   "AUS": "AUS", "AUT": "AUT", "AZE": "AZE", "BAH": "BHS", "BAN": "BGD",
   "BAR": "BRB", "BDI": "BDI", "BEL": "BEL", "BEN": "BEN", "BER": "BMU",
@@ -57,33 +56,26 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [medalType, setMedalType] = useState('total');
-  const [page, setPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const [rowsPerPage] = useState(250); // Get more data for the map
-  const [tooltipContent, setTooltipContent] = useState('');
+  const [rowsPerPage] = useState(250); 
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get(`http://localhost:5000/api/medals`, {
         params: {
-          page: page + 1,
+          page: 1,
           per_page: rowsPerPage
         }
       });
 
       setData([...response.data.data]);
-      setTotalCount(response.data.total);
       setError(null);
-      
-      const start = page * rowsPerPage + 1;
-      const end = Math.min(start + rowsPerPage - 1, response.data.total);
       
       onQueryComplete?.(
         response.data.execution_time,
         response.data.total,
-        start,
-        end
+        1,
+        Math.min(rowsPerPage, response.data.total)
       );
     } catch (err) {
       console.error('Error details:', err);
@@ -94,34 +86,28 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, onQueryComplete]);
+  }, [rowsPerPage, onQueryComplete]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
   
-  // Set up tooltips
   useEffect(() => {
     ReactTooltip.rebuild();
   }, [data, medalType]);
 
-  // Process data for the map
   const processedData = data.reduce((acc, country) => {
     const countryNoc = country.country_noc;
     
-    // Skip if we don't have a mapping for this NOC
     if (!nocToIsoMap[countryNoc]) return acc;
     
-    // Use ISO code from our mapping
     const iso = nocToIsoMap[countryNoc];
     
-    // Extract medal counts
     const goldCount = country.gold || 0;
     const silverCount = country.silver || 0;
     const bronzeCount = country.bronze || 0;
     const totalCount = country.total || 0;
     
-    // Extract medal count based on selected type for coloring
     let medalCount;
     switch(medalType) {
       case 'gold':
@@ -137,7 +123,6 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
         medalCount = totalCount;
     }
     
-    // Add to our accumulator
     if (!acc[iso]) {
       acc[iso] = {
         medals: medalCount,
@@ -148,7 +133,6 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
         name: country.country
       };
     } else {
-      // Sum medals if the country appears multiple times
       acc[iso].medals += medalCount;
       acc[iso].gold += goldCount;
       acc[iso].silver += silverCount;
@@ -159,12 +143,10 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
     return acc;
   }, {});
 
-  // Find the maximum medal count for scaling
   const maxMedals = Object.values(processedData).length > 0 
     ? Math.max(...Object.values(processedData).map(d => d.medals)) 
     : 0;
 
-  // Create color scale
   const colorScale = scaleLinear()
     .domain([0, maxMedals])
     .range(["#CFD8DC", "#102693"]);
@@ -249,7 +231,6 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
                   const id = geo.id;
                   const countryData = processedData[id] || { medals: 0, gold: 0, silver: 0, bronze: 0, total: 0, name: geo.properties?.name };
                   
-                  // Prepare tooltip content
                   const tooltipHtml = countryData.name ? 
                     `<div style="text-align:center;margin:0;padding:0">
                       <strong>${countryData.name}</strong><br/>
@@ -271,7 +252,7 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
                           outline: "none"
                         },
                         hover: {
-                          fill: "#999", // Gray instead of orange
+                          fill: "#999", 
                           outline: "none",
                           stroke: "#333",
                           strokeWidth: 0.7
@@ -282,10 +263,8 @@ const MedalMap = ({ tableType = 'medals', searchQuery = '', onQueryComplete }) =
                       }}
                       data-tip={tooltipHtml}
                       onMouseEnter={() => {
-                        setTooltipContent(tooltipHtml);
                       }}
                       onMouseLeave={() => {
-                        setTooltipContent('');
                       }}
                     />
                   );

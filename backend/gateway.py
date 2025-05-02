@@ -24,22 +24,40 @@ def get_db_connection():
     )
     return conn
 
-def get_paginated_response(query, count_query, columns, params=()):
+def get_paginated_response(query, count_query, columns, params=(), search_term=None, search_columns=None):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Get total count
-    cursor.execute(count_query, params)
+    working_query = query
+    working_count_query = count_query
+    working_params = list(params)
+    
+    if search_term and search_columns:
+        search_conditions = " OR ".join([f"{col} ILIKE %s" for col in search_columns])
+        search_value = f'%{search_term}%'
+        
+        for _ in search_columns:
+            working_params.append(search_value)
+        
+        if "WHERE" in working_query:
+            working_query = working_query.replace("ORDER BY", f"AND ({search_conditions}) ORDER BY")
+            working_count_query = working_count_query + f" AND ({search_conditions})"
+        else:
+            working_query = working_query.replace("ORDER BY", f"WHERE ({search_conditions}) ORDER BY")
+            working_count_query = working_count_query + f" WHERE ({search_conditions})"
+    
+    cursor.execute(working_count_query, tuple(working_params))
     total_count = cursor.fetchone()[0]
     
-    #  query execution time
-    cursor.execute("EXPLAIN ANALYZE " + query, params)
-    execution_plan = cursor.fetchall()
-    #time from the last line of EXPLAIN ANALYZE
-    execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    execution_time = 0
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + working_query, tuple(working_params))
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
     
-    #actual data
-    cursor.execute(query, params)
+    cursor.execute(working_query, tuple(working_params))
     search_results = cursor.fetchall()
     results = [dict(zip(columns, result)) for result in search_results]
     
@@ -49,7 +67,7 @@ def get_paginated_response(query, count_query, columns, params=()):
     return {
         "total": total_count,
         "data": results,
-        "execution_time": execution_time / 1000  # Convert from ms to seconds
+        "execution_time": execution_time / 1000
     }
 
 # a sample query for now - same one from our phase 2 doc
@@ -200,34 +218,26 @@ def delete_player(id, name):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
-    deleted = cursor.rowcount > 0
-    
+    if id in player_dict and player_dict[id] == name:
+        del player_dict[id]
+        cursor.execute('DELETE FROM Olympic_Athlete_Biography WHERE athlete_id = %s AND name = %s', (id, name))
+
     conn.commit()
     cursor.close()
     conn.close()
-    
-    if deleted:
-        return jsonify({"message": f"{name} deleted successfully", "success": True})
-    return jsonify({"error": "Record not found", "success": False}), 404
+    return jsonify({"message": f"{name} Deleted successfully"})
 
 # athlete event details table
 @app.route('/api/delete/athleteEventDetails/<edition_id>/<result_id>/<athlete_id>/<pos>', methods=['DELETE'])
 def delete_player_event(edition_id, result_id, athlete_id, pos):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', 
-                  (edition_id, result_id, athlete_id, pos))
-    deleted = cursor.rowcount > 0
-    
+    cursor.execute('DELETE FROM Olympic_Athlete_Event_Details WHERE edition_id = %s AND result_id = %s AND athlete_id = %s AND pos = %s', (edition_id, result_id, athlete_id, pos))
+
     conn.commit()
     cursor.close()
     conn.close()
-    
-    if deleted:
-        return jsonify({"message": "Record deleted successfully", "success": True})
-    return jsonify({"error": "Record not found", "success": False}), 404
+    return jsonify({"message": f"Record with Edition ID: {edition_id}, Result ID: {result_id}, Athlete ID: {athlete_id}, Position: {pos} Deleted successfully"})
 
 
 
@@ -243,17 +253,57 @@ def get_athletes():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')
     
-    query = 'SELECT * FROM olympic_athlete_biography ORDER BY name LIMIT %s OFFSET %s'
-    count_query = 'SELECT COUNT(*) FROM olympic_athlete_biography'
+    base_query = 'SELECT * FROM olympic_athlete_biography'
+    
+    if search_query:
+        search_value = f'%{search_query}%'
+        where_clause = '''
+        WHERE name ILIKE %s 
+        OR country ILIKE %s 
+        OR country_noc ILIKE %s
+        '''
+        order_and_limit = 'ORDER BY name LIMIT %s OFFSET %s'
+        query = base_query + where_clause + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_athlete_biography WHERE name ILIKE %s OR country ILIKE %s OR country_noc ILIKE %s'
+        params = (search_value, search_value, search_value, per_page, offset)
+        count_params = (search_value, search_value, search_value)
+    else:
+        order_and_limit = 'ORDER BY name LIMIT %s OFFSET %s'
+        query = base_query + ' ' + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_athlete_biography'
+        params = (per_page, offset)
+        count_params = ()
+    
     columns = ["athlete_id", "name", "sex", "born", "height", "weight", "country", "country_noc", "description", "special_notes"]
     
-    return jsonify(get_paginated_response(
-        query=query,
-        count_query=count_query,
-        columns=columns,
-        params=(per_page, offset)
-    ))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(count_query, count_params)
+    total_count = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + query, params)
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
+        execution_time = 0
+    
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000
+    })
 
 #  all athlete event details
 @app.route('/api/athlete_events', methods=['GET'])
@@ -261,17 +311,60 @@ def get_athlete_events():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')
     
-    query = 'SELECT * FROM olympic_athlete_event_details ORDER BY athlete LIMIT %s OFFSET %s'
-    count_query = 'SELECT COUNT(*) FROM olympic_athlete_event_details'
+    base_query = 'SELECT * FROM olympic_athlete_event_details'
+    
+    #bruh this search better work or im going toc ry
+    if search_query:
+        search_value = f'%{search_query}%'
+        where_clause = ''' 
+        WHERE athlete ILIKE %s 
+        OR sport ILIKE %s 
+        OR event ILIKE %s
+        OR medal ILIKE %s
+        OR country_noc ILIKE %s
+        '''
+        order_and_limit = 'ORDER BY athlete LIMIT %s OFFSET %s'
+        query = base_query + where_clause + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_athlete_event_details WHERE athlete ILIKE %s OR sport ILIKE %s OR event ILIKE %s OR medal ILIKE %s OR country_noc ILIKE %s'
+        params = (search_value, search_value, search_value, search_value, search_value, per_page, offset)
+        count_params = (search_value, search_value, search_value, search_value, search_value)
+    else:
+        order_and_limit = 'ORDER BY athlete LIMIT %s OFFSET %s'
+        query = base_query + ' ' + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_athlete_event_details'
+        params = (per_page, offset)
+        count_params = ()
+    
     columns = ["edition", "edition_id", "country_noc", "sport", "event", "result_id", "athlete", "athlete_id", "pos", "medal", "isteamsport"]
     
-    return jsonify(get_paginated_response(
-        query=query,
-        count_query=count_query,
-        columns=columns,
-        params=(per_page, offset)
-    ))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(count_query, count_params)
+    total_count = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + query, params)
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
+        execution_time = 0
+    
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000
+    })
 
 #  all country profiles
 @app.route('/api/countries', methods=['GET'])
@@ -279,17 +372,56 @@ def get_countries():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')
     
-    query = 'SELECT * FROM olympic_country_profiles ORDER BY country LIMIT %s OFFSET %s'
-    count_query = 'SELECT COUNT(*) FROM olympic_country_profiles'
-    columns = ["noc", "country", "notes"]
+    base_query = 'SELECT * FROM olympic_country_profiles'
     
-    return jsonify(get_paginated_response(
-        query=query,
-        count_query=count_query,
-        columns=columns,
-        params=(per_page, offset)
-    ))
+    if search_query:
+        search_value = f'%{search_query}%'
+        where_clause = '''
+        WHERE noc ILIKE %s 
+        OR country ILIKE %s
+        '''
+        order_and_limit = 'ORDER BY country LIMIT %s OFFSET %s'
+        query = base_query + where_clause + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_country_profiles WHERE noc ILIKE %s OR country ILIKE %s'
+        params = (search_value, search_value, per_page, offset)
+        count_params = (search_value, search_value)
+    else:
+        order_and_limit = 'ORDER BY country LIMIT %s OFFSET %s'
+        query = base_query + ' ' + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_country_profiles'
+        params = (per_page, offset)
+        count_params = ()
+    
+    columns = ["noc", "country"]
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(count_query, count_params)
+    total_count = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + query, params)
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
+        execution_time = 0
+    
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000
+    })
 
 #  all event results
 @app.route('/api/events', methods=['GET'])
@@ -297,17 +429,58 @@ def get_events():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')
     
-    query = 'SELECT * FROM olympic_event_results ORDER BY edition, sport, event_title LIMIT %s OFFSET %s'
-    count_query = 'SELECT COUNT(*) FROM olympic_event_results'
+    base_query = 'SELECT * FROM olympic_event_results'
+    
+    if search_query:
+        search_value = f'%{search_query}%'
+        where_clause = '''
+        WHERE event_title ILIKE %s 
+        OR edition ILIKE %s 
+        OR sport ILIKE %s
+        OR result_location ILIKE %s
+        '''
+        order_and_limit = 'ORDER BY edition, sport, event_title LIMIT %s OFFSET %s'
+        query = base_query + where_clause + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_event_results WHERE event_title ILIKE %s OR edition ILIKE %s OR sport ILIKE %s OR result_location ILIKE %s'
+        params = (search_value, search_value, search_value, search_value, per_page, offset)
+        count_params = (search_value, search_value, search_value, search_value)
+    else:
+        order_and_limit = 'ORDER BY edition, sport, event_title LIMIT %s OFFSET %s'
+        query = base_query + ' ' + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_event_results'
+        params = (per_page, offset)
+        count_params = ()
+    
     columns = ["result_id", "event_title", "edition", "edition_id", "sport", "sport_url", "result_date", "result_location", "result_participants", "result_format", "result_detail", "result_description"]
     
-    return jsonify(get_paginated_response(
-        query=query,
-        count_query=count_query,
-        columns=columns,
-        params=(per_page, offset)
-    ))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(count_query, count_params)
+    total_count = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + query, params)
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
+        execution_time = 0
+    
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000
+    })
 
 #  all games summaries
 @app.route('/api/games', methods=['GET'])
@@ -315,26 +488,60 @@ def get_games():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')
     
-    query = '''
-        SELECT edition, edition_id, edition_url, year, city, 
-               country_flag_url, country_noc, start_date, end_date, 
-               competition_date, isHeld
-        FROM olympic_games_summary 
-        ORDER BY year DESC 
-        LIMIT %s OFFSET %s
-    '''
-    count_query = 'SELECT COUNT(*) FROM olympic_games_summary'
+    base_query = 'SELECT * FROM olympic_games_summary'
+    
+    if search_query:
+        search_value = f'%{search_query}%'
+        where_clause = '''
+        WHERE edition ILIKE %s 
+        OR year::text ILIKE %s 
+        OR city ILIKE %s
+        OR country_noc ILIKE %s
+        '''
+        order_and_limit = 'ORDER BY year DESC LIMIT %s OFFSET %s'
+        query = base_query + where_clause + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_games_summary WHERE edition ILIKE %s OR year::text ILIKE %s OR city ILIKE %s OR country_noc ILIKE %s'
+        params = (search_value, search_value, search_value, search_value, per_page, offset)
+        count_params = (search_value, search_value, search_value, search_value)
+    else:
+        order_and_limit = 'ORDER BY year DESC LIMIT %s OFFSET %s'
+        query = base_query + ' ' + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_games_summary'
+        params = (per_page, offset)
+        count_params = ()
+    
     columns = ["edition", "edition_id", "edition_url", "year", "city", 
                "country_flag_url", "country_noc", "start_date", "end_date", 
                "competition_date", "isHeld"]
     
-    return jsonify(get_paginated_response(
-        query=query,
-        count_query=count_query,
-        columns=columns,
-        params=(per_page, offset)
-    ))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(count_query, count_params)
+    total_count = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + query, params)
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
+        execution_time = 0
+    
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000
+    })
 
 #  all medal tallies
 @app.route('/api/medals', methods=['GET'])
@@ -342,26 +549,125 @@ def get_medals():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')
     
-    query = '''
+    base_query = '''
         SELECT medalTally.edition, medalTally.edition_id, medalTally.year, medalTally.country, medalTally.country_noc, 
         ROW_NUMBER() OVER(PARTITION BY medalTally.edition_id ORDER BY medalTally.total DESC) as rank,
         medalTally.gold, medalTally.silver, medalTally.bronze, medalTally.total
         FROM olympic_medal_tally_history AS medalTally 
         JOIN olympic_country_profiles AS countryProfile 
         ON medalTally.country_noc = countryProfile.noc 
-        ORDER BY edition_id DESC, total DESC 
-        LIMIT %s OFFSET %s
     '''
-    count_query = 'SELECT COUNT(*) FROM olympic_medal_tally_history'
+    
+    if search_query:
+        search_value = f'%{search_query}%'
+        where_clause = '''
+        WHERE medalTally.edition ILIKE %s 
+        OR medalTally.country ILIKE %s 
+        OR medalTally.country_noc ILIKE %s
+        '''
+        order_and_limit = 'ORDER BY medalTally.edition_id DESC, medalTally.total DESC LIMIT %s OFFSET %s'
+        query = base_query + where_clause + order_and_limit
+        count_query = f'SELECT COUNT(*) FROM olympic_medal_tally_history AS medalTally WHERE medalTally.edition ILIKE %s OR medalTally.country ILIKE %s OR medalTally.country_noc ILIKE %s'
+        params = (search_value, search_value, search_value, per_page, offset)
+        count_params = (search_value, search_value, search_value)
+    else:
+        order_and_limit = 'ORDER BY medalTally.edition_id DESC, medalTally.total DESC LIMIT %s OFFSET %s'
+        query = base_query + order_and_limit
+        count_query = 'SELECT COUNT(*) FROM olympic_medal_tally_history'
+        params = (per_page, offset)
+        count_params = ()
+    
     columns = ["edition", "edition_id", "year", "country", "country_noc", "rank", "gold", "silver", "bronze", "total"]
     
-    return jsonify(get_paginated_response(
-        query=query,
-        count_query=count_query,
-        columns=columns,
-        params=(per_page, offset)
-    ))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(count_query, count_params)
+    total_count = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("EXPLAIN ANALYZE " + query, params)
+        execution_plan = cursor.fetchall()
+        execution_time = float([line for line in execution_plan if "Execution Time:" in line[0]][0][0].split(": ")[1].split(" ms")[0])
+    except Exception as e:
+        print(f"Error during EXPLAIN ANALYZE: {e}")
+        execution_time = 0
+    
+    cursor.execute(query, params)
+    search_results = cursor.fetchall()
+    results = [dict(zip(columns, result)) for result in search_results]
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        "total": total_count,
+        "data": results,
+        "execution_time": execution_time / 1000
+    })
+
+@app.route('/api/insert/countries', methods=['POST'])
+def insert_country():
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT COUNT(*) FROM Olympic_Country_Profiles WHERE noc = %s', (data['noc'],))
+        exists = cursor.fetchone()[0] > 0
+        
+        if exists:
+            return jsonify({"error": f"Country with NOC '{data['noc']}' already exists", "success": False}), 400
+        
+        cursor.execute(
+            'INSERT INTO Olympic_Country_Profiles (noc, country) VALUES (%s, %s)',
+            (data['noc'], data['country'])
+        )
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": f"{data['country']} inserted successfully", "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e), "success": False}), 400
+
+@app.route('/api/insert/athletes', methods=['POST'])
+def insert_athlete():
+    try:
+        data = request.json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT COUNT(*) FROM Olympic_Athlete_Biography WHERE athlete_id = %s', (data['athlete_id'],))
+        exists = cursor.fetchone()[0] > 0
+        
+        if exists:
+            return jsonify({"error": f"Athlete with ID '{data['athlete_id']}' already exists", "success": False}), 400
+        
+        athlete_id = data['athlete_id']
+        name = data['name']
+        sex = data.get('sex', '')
+        born = data.get('born', '')
+        height = data.get('height', '')
+        weight = data.get('weight', '')
+        country = data.get('country', '')
+        country_noc = data.get('country_noc', '')
+        description = data.get('description', '')
+        special_notes = data.get('special_notes', '')
+        
+        cursor.execute('INSERT INTO Olympic_Athlete_Biography (athlete_id, name, sex, born, height, weight, country, country_noc, description, special_notes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', 
+                       (athlete_id, name, sex, born, height, weight, country, country_noc, description, special_notes))
+        
+        player_dict[athlete_id] = name
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": f"{name} inserted successfully", "success": True})
+    except Exception as e:
+        return jsonify({"error": str(e), "success": False}), 400
 
 if __name__ == "__main__":
     app.run(debug=True)
